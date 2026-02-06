@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>潮汐グラフ（3日分）</title>
+
+  <!-- Chart.js (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{--gap:2rem;--graph-print-h:80mm;}
+    body{font-family:system-ui,Arial,sans-serif;margin:2rem;}
+    form{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;}
+    #charts{display:grid;gap:var(--gap);}
+    .chart-wrap{width:100%;}
+    .chart-wrap canvas{width:100%!important;height:auto!important;}
+    h1{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end;margin-bottom:1rem;}
+    #portLabel{font-size:1.05rem;font-weight:600;color:#000;}
+    .error{color:#d00;margin-top:.5rem;white-space:pre-wrap;}
+    .hint{font-size:.85rem;color:#555;margin-top:.25rem;white-space:pre-wrap;}
+    select,input,button{font-size:1rem;}
+    @media print{
+      @page{margin:10mm;}
+      body{margin:0;font-size:10pt;}
+      form,#hint,#err{display:none;}
+      h1{margin:0 0 4mm;font-size:14pt;}
+      :root{--gap:8mm;}
+      .chart-wrap canvas{max-height:var(--graph-print-h);}
+    }
+  </style>
+</head>
+
+<body>
+<h1>潮汐グラフ（3日分） <span id="portLabel"></span></h1>
+
+<form id="ctrl">
+  <label>日付: <input type="date" id="dateInput" required></label>
+
+  <label>都道府県:
+    <select id="prefSelect" required>
+      <option value="">読み込み中…</option>
+    </select>
+  </label>
+
+  <label>港:
+    <select id="portSelect" required disabled>
+      <option value="">都道府県を選択</option>
+    </select>
+  </label>
+
+  <button type="submit">表示</button>
+</form>
+
+<p class="error" id="err"></p>
+<p class="hint" id="hint"></p>
+<div id="charts"></div>
+
+<script>
+/**
+ * ports.json の想定フォーマット（例）
+ * [
+ *   {
+ *     "prefecture_code": 38,
+ *     "prefecture_name": "愛媛県",
+ *     "harbors": [
+ *       {"harbor_code": 7, "harbor_name": "宇和島"},
+ *       ...
+ *     ]
+ *   },
+ *   ...
+ * ]
+ */
+
+const API_BASE = 'https://api.tide736.net/get_tide.php'; // :contentReference[oaicite:4]{index=4}
+const chartsDiv = document.getElementById('charts');
+const errEl = document.getElementById('err');
+const hintEl = document.getElementById('hint');
+const prefSel = document.getElementById('prefSelect');
+const portSel = document.getElementById('portSelect');
+const portLbl = document.getElementById('portLabel');
+
+let charts = [];
+let portsIndex = []; // ports.json の中身
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+async function safeFetch(url){
+  // GitHub Pages(https)前提で、まずは直 → ダメならプロキシ fallback
+  const tryFetch = u => fetch(u,{mode:'cors', cache:'no-store'}).catch(()=>null);
+
+  // 1) direct
+  let res = await tryFetch(url);
+  if(res && res.ok) return res;
+
+  // 2) AllOrigins
+  hintEl.textContent='直取得が失敗 → AllOrigins 経由で取得中…';
+  res = await tryFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+  if(res && res.ok) return res;
+
+  // 3) isomorphic-git proxy
+  hintEl.textContent='AllOrigins 失敗 → 代替プロキシで取得中…';
+  res = await tryFetch(`https://cors.isomorphic-git.org/${url}`);
+  if(res && res.ok) return res;
+
+  // 4) corsproxy.io（保険）
+  hintEl.textContent='代替プロキシ失敗 → corsproxy.ioで取得中…';
+  res = await tryFetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+  if(res && res.ok) return res;
+
+  throw new Error('Failed to fetch (direct + proxies)');
+}
+
+function peaksTroughs(list,labels){
+  const pk=[],tr=[];
+  for(let i=1;i<list.length-1;i++){
+    const prev=list[i-1].cm,cur=list[i].cm,next=list[i+1].cm;
+    if(cur>prev&&cur>next) pk.push({x:labels[i],y:cur});
+    if(cur<prev&&cur<next) tr.push({x:labels[i],y:cur});
+  }
+  return {pk,tr};
+}
+
+function destroyCharts(){
+  charts.forEach(c=>c.destroy());
+  charts = [];
+  chartsDiv.innerHTML = '';
+}
+
+function setPortsForPref(pc){
+  portSel.innerHTML = '';
+  portSel.disabled = true;
+
+  const pref = portsIndex.find(p => String(p.prefecture_code) === String(pc));
+  if(!pref){
+    portSel.insertAdjacentHTML('beforeend', `<option value="">港が見つかりません</option>`);
+    return;
+  }
+
+  portSel.insertAdjacentHTML('beforeend', `<option value="">選択してください</option>`);
+  for(const h of pref.harbors){
+    portSel.insertAdjacentHTML('beforeend', `<option value="${h.harbor_code}">${h.harbor_name}</option>`);
+  }
+  portSel.disabled = false;
+}
+
+async function loadPortsJson(){
+  errEl.textContent = '';
+  hintEl.textContent = '港一覧(ports.json)を読み込み中…';
+
+  const res = await fetch('./ports.json', {cache:'no-store'});
+  if(!res.ok) throw new Error(`ports.json 読み込み失敗: ${res.status} ${res.statusText}`);
+  portsIndex = await res.json();
+
+  // 都道府県セレクト生成
+  prefSel.innerHTML = `<option value="">選択してください</option>`;
+  for(const p of portsIndex){
+    prefSel.insertAdjacentHTML(
+      'beforeend',
+      `<option value="${p.prefecture_code}">${p.prefecture_name}</option>`
+    );
+  }
+
+  hintEl.textContent = '';
+}
+
+async function draw(){
+  errEl.textContent='';
+  hintEl.textContent='';
+  destroyCharts();
+
+  const baseDateStr = document.getElementById('dateInput').value;
+  const pc = prefSel.value;
+  const hc = portSel.value;
+
+  if(!baseDateStr || !pc || !hc){
+    errEl.textContent = '日付・都道府県・港を選択してください。';
+    return;
+  }
+
+  const pref = portsIndex.find(p => String(p.prefecture_code) === String(pc));
+  const harbor = pref?.harbors?.find(h => String(h.harbor_code) === String(hc));
+  portLbl.textContent = pref && harbor ? `（${pref.prefecture_name} / ${harbor.harbor_name}）` : '';
+
+  const baseDate = new Date(baseDateStr);
+
+  try{
+    for(let offset=-1; offset<=1; offset++){
+      const d = new Date(baseDate);
+      d.setDate(d.getDate()+offset);
+
+      const y = d.getFullYear();
+      const m = pad2(d.getMonth()+1);
+      const dy = pad2(d.getDate());
+
+      // tide736 API: pc/hc/yr/mn/dy/rg :contentReference[oaicite:5]{index=5}
+      const url = `${API_BASE}?pc=${pc}&hc=${hc}&yr=${y}&mn=${m}&dy=${dy}&rg=day`;
+
+      const res = await safeFetch(url);
+      if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+
+      const j = await res.json();
+      if(j.status !== 1) throw new Error(j.message || 'API status != 1');
+
+      const dateKey = Object.keys(j.tide.chart)[0];
+      const list = j.tide.chart[dateKey].tide;
+
+      const labels = list.map(t=>t.time);
+      const data = list.map(t=>t.cm);
+      const {pk,tr} = peaksTroughs(list,labels);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'chart-wrap';
+      const canvas = document.createElement('canvas');
+      wrap.appendChild(canvas);
+      chartsDiv.appendChild(wrap);
+
+      charts.push(new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{
+          labels,
+          datasets:[
+            {label:'潮位(cm)',data,borderColor:'#000',backgroundColor:'rgba(0,0,0,.8)',
+             borderWidth:3,pointRadius:0,tension:.1},
+            {type:'scatter',label:'満潮',data:pk,pointRadius:5,backgroundColor:'#d00',borderColor:'#d00'},
+            {type:'scatter',label:'干潮',data:tr,pointStyle:'rectRot',pointRadius:5,backgroundColor:'#0044cc',borderColor:'#0044cc'}
+          ]
+        },
+        options:{
+          maintainAspectRatio:true,
+          plugins:{
+            title:{display:true,text:dateKey,align:'start',font:{size:14}},
+            legend:{labels:{boxWidth:14}},
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label==='潮位(cm)'?'':ctx.dataset.label+': '}${ctx.formattedValue} cm`}}
+          },
+          interaction:{mode:'nearest',axis:'x',intersect:false},
+          scales:{
+            x:{
+              title:{display:true,text:'時刻'},
+              ticks:{autoSkip:false,color:'#000',callback:v=>labels[v]?.endsWith(':00')?labels[v]:''},
+              grid:{color:'#555'}
+            },
+            y:{
+              title:{display:true,text:'潮位(cm)'},
+              ticks:{color:'#000'},
+              grid:{color:'#555'}
+            }
+          }
+        }
+      }));
+    }
+    hintEl.textContent='';
+  }catch(e){
+    errEl.textContent = 'データ取得失敗: ' + (e?.message || e);
+  }
+}
+
+/************ 初期化 ************/
+document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+
+prefSel.addEventListener('change', ()=>{
+  setPortsForPref(prefSel.value);
+  portLbl.textContent = '';
+  destroyCharts();
+});
+
+document.getElementById('ctrl').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  draw();
+});
+
+// 起動時：ports.json 読み込み
+loadPortsJson().catch(e=>{
+  errEl.textContent = (e?.message || e);
+  hintEl.textContent = '';
+});
+</script>
+</body>
+</html>
