@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>’ª¬ƒOƒ‰ƒti3“ú•ªj</title>
+  <title>æ½®æ±ã‚°ãƒ©ãƒ•ï¼ˆ3æ—¥åˆ†ï¼‰</title>
 
   <!-- Chart.js (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -31,24 +31,24 @@
 </head>
 
 <body>
-<h1>’ª¬ƒOƒ‰ƒti3“ú•ªj <span id="portLabel"></span></h1>
+<h1>æ½®æ±ã‚°ãƒ©ãƒ•ï¼ˆ3æ—¥åˆ†ï¼‰ <span id="portLabel"></span></h1>
 
 <form id="ctrl">
-  <label>“ú•t: <input type="date" id="dateInput" required></label>
+  <label>æ—¥ä»˜: <input type="date" id="dateInput" required></label>
 
-  <label>“s“¹•{Œ§:
+  <label>éƒ½é“åºœçœŒ:
     <select id="prefSelect" required>
-      <option value="">“Ç‚İ‚İ’†c</option>
+      <option value="">èª­ã¿è¾¼ã¿ä¸­â€¦</option>
     </select>
   </label>
 
-  <label>`:
+  <label>æ¸¯:
     <select id="portSelect" required disabled>
-      <option value="">“s“¹•{Œ§‚ğ‘I‘ğ</option>
+      <option value="">éƒ½é“åºœçœŒã‚’é¸æŠ</option>
     </select>
   </label>
 
-  <button type="submit">•\¦</button>
+  <button type="submit">è¡¨ç¤º</button>
 </form>
 
 <p class="error" id="err"></p>
@@ -57,13 +57,13 @@
 
 <script>
 /**
- * ports.json ‚Ì‘z’èƒtƒH[ƒ}ƒbƒgi—áj
+ * ports.json ã®æƒ³å®šãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆï¼ˆä¾‹ï¼‰
  * [
  *   {
  *     "prefecture_code": 38,
- *     "prefecture_name": "ˆ¤•QŒ§",
+ *     "prefecture_name": "æ„›åª›çœŒ",
  *     "harbors": [
- *       {"harbor_code": 7, "harbor_name": "‰F˜a“‡"},
+ *       {"harbor_code": 7, "harbor_name": "å®‡å’Œå³¶"},
  *       ...
  *     ]
  *   },
@@ -80,12 +80,12 @@ const portSel = document.getElementById('portSelect');
 const portLbl = document.getElementById('portLabel');
 
 let charts = [];
-let portsIndex = []; // ports.json ‚Ì’†g
+let portsIndex = []; // ports.json ã®ä¸­èº«
 
 function pad2(n){ return String(n).padStart(2,'0'); }
 
 async function safeFetch(url){
-  // GitHub Pages(https)‘O’ñ‚ÅA‚Ü‚¸‚Í’¼ ¨ ƒ_ƒ‚È‚çƒvƒƒLƒV fallback
+  // GitHub Pages(https)å‰æã§ã€ã¾ãšã¯ç›´ â†’ ãƒ€ãƒ¡ãªã‚‰ãƒ—ãƒ­ã‚­ã‚· fallback
   const tryFetch = u => fetch(u,{mode:'cors', cache:'no-store'}).catch(()=>null);
 
   // 1) direct
@@ -93,17 +93,17 @@ async function safeFetch(url){
   if(res && res.ok) return res;
 
   // 2) AllOrigins
-  hintEl.textContent='’¼æ“¾‚ª¸”s ¨ AllOrigins Œo—R‚Åæ“¾’†c';
+  hintEl.textContent='ç›´å–å¾—ãŒå¤±æ•— â†’ AllOrigins çµŒç”±ã§å–å¾—ä¸­â€¦';
   res = await tryFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
   if(res && res.ok) return res;
 
   // 3) isomorphic-git proxy
-  hintEl.textContent='AllOrigins ¸”s ¨ ‘ã‘ÖƒvƒƒLƒV‚Åæ“¾’†c';
+  hintEl.textContent='AllOrigins å¤±æ•— â†’ ä»£æ›¿ãƒ—ãƒ­ã‚­ã‚·ã§å–å¾—ä¸­â€¦';
   res = await tryFetch(`https://cors.isomorphic-git.org/${url}`);
   if(res && res.ok) return res;
 
-  // 4) corsproxy.ioi•ÛŒ¯j
-  hintEl.textContent='‘ã‘ÖƒvƒƒLƒV¸”s ¨ corsproxy.io‚Åæ“¾’†c';
+  // 4) corsproxy.ioï¼ˆä¿é™ºï¼‰
+  hintEl.textContent='ä»£æ›¿ãƒ—ãƒ­ã‚­ã‚·å¤±æ•— â†’ corsproxy.ioã§å–å¾—ä¸­â€¦';
   res = await tryFetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
   if(res && res.ok) return res;
 
@@ -132,11 +132,11 @@ function setPortsForPref(pc){
 
   const pref = portsIndex.find(p => String(p.prefecture_code) === String(pc));
   if(!pref){
-    portSel.insertAdjacentHTML('beforeend', `<option value="">`‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ</option>`);
+    portSel.insertAdjacentHTML('beforeend', `<option value="">æ¸¯ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“</option>`);
     return;
   }
 
-  portSel.insertAdjacentHTML('beforeend', `<option value="">‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢</option>`);
+  portSel.insertAdjacentHTML('beforeend', `<option value="">é¸æŠã—ã¦ãã ã•ã„</option>`);
   for(const h of pref.harbors){
     portSel.insertAdjacentHTML('beforeend', `<option value="${h.harbor_code}">${h.harbor_name}</option>`);
   }
@@ -145,14 +145,14 @@ function setPortsForPref(pc){
 
 async function loadPortsJson(){
   errEl.textContent = '';
-  hintEl.textContent = '`ˆê——(ports.json)‚ğ“Ç‚İ‚İ’†c';
+  hintEl.textContent = 'æ¸¯ä¸€è¦§(ports.json)ã‚’èª­ã¿è¾¼ã¿ä¸­â€¦';
 
   const res = await fetch('./ports.json', {cache:'no-store'});
-  if(!res.ok) throw new Error(`ports.json “Ç‚İ‚İ¸”s: ${res.status} ${res.statusText}`);
+  if(!res.ok) throw new Error(`ports.json èª­ã¿è¾¼ã¿å¤±æ•—: ${res.status} ${res.statusText}`);
   portsIndex = await res.json();
 
-  // “s“¹•{Œ§ƒZƒŒƒNƒg¶¬
-  prefSel.innerHTML = `<option value="">‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢</option>`;
+  // éƒ½é“åºœçœŒã‚»ãƒ¬ã‚¯ãƒˆç”Ÿæˆ
+  prefSel.innerHTML = `<option value="">é¸æŠã—ã¦ãã ã•ã„</option>`;
   for(const p of portsIndex){
     prefSel.insertAdjacentHTML(
       'beforeend',
@@ -173,13 +173,13 @@ async function draw(){
   const hc = portSel.value;
 
   if(!baseDateStr || !pc || !hc){
-    errEl.textContent = '“ú•tE“s“¹•{Œ§E`‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢B';
+    errEl.textContent = 'æ—¥ä»˜ãƒ»éƒ½é“åºœçœŒãƒ»æ¸¯ã‚’é¸æŠã—ã¦ãã ã•ã„ã€‚';
     return;
   }
 
   const pref = portsIndex.find(p => String(p.prefecture_code) === String(pc));
   const harbor = pref?.harbors?.find(h => String(h.harbor_code) === String(hc));
-  portLbl.textContent = pref && harbor ? `i${pref.prefecture_name} / ${harbor.harbor_name}j` : '';
+  portLbl.textContent = pref && harbor ? `ï¼ˆ${pref.prefecture_name} / ${harbor.harbor_name}ï¼‰` : '';
 
   const baseDate = new Date(baseDateStr);
 
@@ -219,10 +219,10 @@ async function draw(){
         data:{
           labels,
           datasets:[
-            {label:'’ªˆÊ(cm)',data,borderColor:'#000',backgroundColor:'rgba(0,0,0,.8)',
+            {label:'æ½®ä½(cm)',data,borderColor:'#000',backgroundColor:'rgba(0,0,0,.8)',
              borderWidth:3,pointRadius:0,tension:.1},
-            {type:'scatter',label:'–’ª',data:pk,pointRadius:5,backgroundColor:'#d00',borderColor:'#d00'},
-            {type:'scatter',label:'Š±’ª',data:tr,pointStyle:'rectRot',pointRadius:5,backgroundColor:'#0044cc',borderColor:'#0044cc'}
+            {type:'scatter',label:'æº€æ½®',data:pk,pointRadius:5,backgroundColor:'#d00',borderColor:'#d00'},
+            {type:'scatter',label:'å¹²æ½®',data:tr,pointStyle:'rectRot',pointRadius:5,backgroundColor:'#0044cc',borderColor:'#0044cc'}
           ]
         },
         options:{
@@ -230,17 +230,17 @@ async function draw(){
           plugins:{
             title:{display:true,text:dateKey,align:'start',font:{size:14}},
             legend:{labels:{boxWidth:14}},
-            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label==='’ªˆÊ(cm)'?'':ctx.dataset.label+': '}${ctx.formattedValue} cm`}}
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label==='æ½®ä½(cm)'?'':ctx.dataset.label+': '}${ctx.formattedValue} cm`}}
           },
           interaction:{mode:'nearest',axis:'x',intersect:false},
           scales:{
             x:{
-              title:{display:true,text:''},
+              title:{display:true,text:'æ™‚åˆ»'},
               ticks:{autoSkip:false,color:'#000',callback:v=>labels[v]?.endsWith(':00')?labels[v]:''},
               grid:{color:'#555'}
             },
             y:{
-              title:{display:true,text:'’ªˆÊ(cm)'},
+              title:{display:true,text:'æ½®ä½(cm)'},
               ticks:{color:'#000'},
               grid:{color:'#555'}
             }
@@ -250,11 +250,11 @@ async function draw(){
     }
     hintEl.textContent='';
   }catch(e){
-    errEl.textContent = 'ƒf[ƒ^æ“¾¸”s: ' + (e?.message || e);
+    errEl.textContent = 'ãƒ‡ãƒ¼ã‚¿å–å¾—å¤±æ•—: ' + (e?.message || e);
   }
 }
 
-/************ ‰Šú‰» ************/
+/************ åˆæœŸåŒ– ************/
 document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
 
 prefSel.addEventListener('change', ()=>{
@@ -268,7 +268,7 @@ document.getElementById('ctrl').addEventListener('submit', (e)=>{
   draw();
 });
 
-// ‹N“®Fports.json “Ç‚İ‚İ
+// èµ·å‹•æ™‚ï¼šports.json èª­ã¿è¾¼ã¿
 loadPortsJson().catch(e=>{
   errEl.textContent = (e?.message || e);
   hintEl.textContent = '';
@@ -276,3 +276,4 @@ loadPortsJson().catch(e=>{
 </script>
 </body>
 </html>
+
