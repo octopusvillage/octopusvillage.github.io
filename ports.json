@@ -1,11 +1,11 @@
 [
   {
     "prefecture_code": 38,
-    "prefecture_name": "ˆ¤•QŒ§",
+    "prefecture_name": "愛媛県",
     "harbors": [
-      {"harbor_code": 7, "harbor_name": "‰F˜a“‡"},
-      {"harbor_code": 1, "harbor_name": "¼ŽR(ŽO’Ã)"},
-      {"harbor_code": 3, "harbor_name": "¡Ž¡"}
+      {"harbor_code": 7, "harbor_name": "宇和島"},
+      {"harbor_code": 1, "harbor_name": "松山(三津)"},
+      {"harbor_code": 3, "harbor_name": "今治"}
     ]
   }
 ]
